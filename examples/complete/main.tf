@@ -4,7 +4,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = "~> 0.1"
+      version = ">= 0.2.0"
     }
   }
 }
@@ -15,7 +15,7 @@ provider "cloudpilotai" {
 }
 
 module "cloudpilotai_eks" {
-  source = "../../"
+  source = "cloudpilot-ai/eks/cloudpilotai"
 
   ################################################################################
   # EKS Cluster - Required
@@ -72,13 +72,13 @@ module "cloudpilotai_eks" {
 
   nodepools = [
     {
-      name              = "cloudpilot-general"
-      nodeclass         = "cloudpilot"
-      enable            = true
-      capacity_type     = ["spot", "on-demand"]
-      instance_arch     = ["amd64"]
-      instance_cpu_max  = 17
-      instance_memory_max = 32769
+      name                  = "cloudpilot-general"
+      nodeclass             = "cloudpilot"
+      enable                = true
+      capacity_type         = ["spot", "on-demand"]
+      instance_arch         = ["amd64"]
+      instance_cpu_max      = 17
+      instance_memory_max   = 32769
       node_disruption_limit = "2"
       node_disruption_delay = "60m"
     }
@@ -90,10 +90,10 @@ module "cloudpilotai_eks" {
 
   workloads = [
     {
-      name          = "my-app"
-      type          = "deployment"
-      namespace     = "default"
-      spot_friendly = true
+      name           = "my-app"
+      type           = "deployment"
+      namespace      = "default"
+      spot_friendly  = true
       rebalance_able = true
     }
   ]

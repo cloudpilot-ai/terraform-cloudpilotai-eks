@@ -4,7 +4,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = "~> 0.1"
+      version = ">= 0.2.0"
     }
   }
 }
@@ -15,7 +15,7 @@ provider "cloudpilotai" {
 }
 
 module "cloudpilotai_eks" {
-  source = "../../"
+  source = "cloudpilot-ai/eks/cloudpilotai"
 
   cluster_name        = var.cluster_name
   region              = var.region
@@ -26,7 +26,7 @@ module "cloudpilotai_eks" {
 
   nodeclasses = [
     {
-      name                 = "cloudpilot"
+      name                     = "cloudpilot"
       enable_image_accelerator = false
       system_disk_size_gib     = 20
       instance_tags            = { "cloudpilot.ai/managed" = "true" }
@@ -35,11 +35,11 @@ module "cloudpilotai_eks" {
 
   nodepools = [
     {
-      name          = "cloudpilot-general"
-      nodeclass     = "cloudpilot"
-      enable        = true
-      capacity_type = ["spot", "on-demand"]
-      instance_arch = ["amd64"]
+      name                  = "cloudpilot-general"
+      nodeclass             = "cloudpilot"
+      enable                = true
+      capacity_type         = ["spot", "on-demand"]
+      instance_arch         = ["amd64"]
       instance_cpu_max      = 17
       instance_memory_max   = 32769
       node_disruption_limit = "2"

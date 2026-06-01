@@ -2,6 +2,11 @@
 
 This example demonstrates the simplest setup: installing the CloudPilot AI agent on an existing EKS cluster in read-only mode. The Workload Autoscaler is disabled.
 
+## GitHub Links
+
+- Example directory: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/tree/main/examples/minimal
+- `main.tf`: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/blob/main/examples/minimal/main.tf
+
 ## What This Example Does
 
 - Installs the CloudPilot AI Node Autoscaler agent in agent-only mode (`only_install_agent = true`)

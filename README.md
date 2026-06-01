@@ -2,6 +2,14 @@
 
 Terraform module for deploying [CloudPilot AI](https://cloudpilot.ai/) Node Autoscaler and Workload Autoscaler on Amazon EKS clusters. This module provides a simplified, opinionated interface that wraps the [`cloudpilotai`](https://registry.terraform.io/providers/cloudpilot-ai/cloudpilotai/latest/docs) Terraform provider resources.
 
+## Registry Support
+
+This module supports both Terraform and OpenTofu.
+
+- Terraform Registry: https://registry.terraform.io/modules/cloudpilot-ai/eks/cloudpilotai/latest
+- OpenTofu Registry: https://search.opentofu.org/module/cloudpilot-ai/eks/cloudpilotai/latest
+- GitHub Repository: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks
+
 ## Features
 
 - Install and configure the CloudPilot AI Node Autoscaler on EKS clusters
@@ -27,7 +35,7 @@ provider "cloudpilotai" {
 }
 
 module "cloudpilotai_eks" {
-  source = "github.com/cloudpilot-ai/terraform-cloudpilotai-eks"
+  source = "cloudpilot-ai/eks/cloudpilotai"
 
   cluster_name       = "my-eks-cluster"
   region             = "us-west-2"
@@ -45,7 +53,7 @@ provider "cloudpilotai" {
 }
 
 module "cloudpilotai_eks" {
-  source = "github.com/cloudpilot-ai/terraform-cloudpilotai-eks"
+  source = "cloudpilot-ai/eks/cloudpilotai"
 
   cluster_name        = "my-eks-cluster"
   region              = "us-west-2"
@@ -82,7 +90,7 @@ provider "cloudpilotai" {
 }
 
 module "cloudpilotai_eks" {
-  source = "github.com/cloudpilot-ai/terraform-cloudpilotai-eks"
+  source = "cloudpilot-ai/eks/cloudpilotai"
 
   cluster_name        = "my-eks-cluster"
   region              = "us-west-2"
@@ -253,7 +261,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = "~> 0.1"
+      version = ">= 0.2.0"
     }
   }
 }

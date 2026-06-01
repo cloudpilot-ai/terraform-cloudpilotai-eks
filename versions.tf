@@ -4,7 +4,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.1"
+      version = ">= 0.2.0"
     }
   }
 }
