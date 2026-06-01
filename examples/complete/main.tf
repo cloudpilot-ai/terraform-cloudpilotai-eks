@@ -32,7 +32,7 @@ module "cloudpilotai_eks" {
   ################################################################################
 
   # aws_profile      = "my-aws-profile"
-  # kubeconfig       = file("~/.kube/config")
+  # kubeconfig       = pathexpand("~/.kube/config")
   # custom_node_role = "my-custom-node-role"
 
   ################################################################################

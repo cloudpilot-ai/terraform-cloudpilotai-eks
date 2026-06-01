@@ -6,8 +6,8 @@ resource "cloudpilotai_eks_cluster" "this" {
   cluster_name = var.cluster_name
   region       = var.region
 
-  aws_profile     = var.aws_profile
-  kubeconfig      = var.kubeconfig
+  aws_profile      = var.aws_profile
+  kubeconfig       = var.kubeconfig
   custom_node_role = var.custom_node_role
 
   only_install_agent = var.only_install_agent

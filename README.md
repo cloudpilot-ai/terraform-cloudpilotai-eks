@@ -172,6 +172,7 @@ module "cloudpilotai_eks" {
 - [Minimal](examples/minimal/) -- Quick-start with agent-only install
 - [Node Autoscaler Only](examples/node-autoscaler-only/) -- Node autoscaler with custom nodeclasses/nodepools, no Workload Autoscaler
 - [Complete](examples/complete/) -- Full configuration with both autoscalers, policies, and proactive optimization
+- [Import Existing](examples/import-existing/) -- Discover existing provider resources with `generated.tf`, convert them into module config, and then import into this module
 
 ## Inputs
 
@@ -187,7 +188,7 @@ module "cloudpilotai_eks" {
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 | `aws_profile` | AWS CLI named profile for AWS operations | `string` | `""` |
-| `kubeconfig` | Kubernetes configuration file content | `string` | `null` |
+| `kubeconfig` | Path to the kubeconfig file | `string` | `null` |
 | `custom_node_role` | Custom IAM role name for EC2 instances | `string` | `null` |
 
 ### Node Autoscaler -- Behavior
@@ -246,7 +247,7 @@ module "cloudpilotai_eks" {
 | `cluster_name` | Name of the EKS cluster |
 | `region` | AWS region where the EKS cluster is located |
 | `account_id` | AWS account ID where the cluster is deployed |
-| `kubeconfig` | Kubeconfig content for accessing the EKS cluster |
+| `kubeconfig` | Path to the kubeconfig file used for accessing the EKS cluster |
 | `enable_rebalance` | Whether workload rebalancing is enabled |
 | `workload_autoscaler_enabled` | Whether the Workload Autoscaler resource was created |
 
