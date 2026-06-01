@@ -1,0 +1,9 @@
+cloudpilot_api_key = "sk-xxx"
+cloudpilot_api_endpoint = "https://api.cloudpilot.ai"
+
+# Find this in the CloudPilot AI console, or resolve it from the provider data
+# source before starting the migration.
+cluster_id = "00000000-0000-0000-0000-000000000000"
+
+# Optional.
+aws_profile = ""

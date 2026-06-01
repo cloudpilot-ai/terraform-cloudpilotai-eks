@@ -23,7 +23,7 @@ variable "aws_profile" {
 }
 
 variable "kubeconfig" {
-  description = "Kubernetes configuration file content for accessing the EKS cluster. If not set, the provider generates it automatically."
+  description = "Path to the kubeconfig file for accessing the EKS cluster. If not set, the provider generates it automatically."
   type        = string
   default     = null
 }

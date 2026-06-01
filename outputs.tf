@@ -23,7 +23,7 @@ output "account_id" {
 }
 
 output "kubeconfig" {
-  description = "Kubeconfig content for accessing the EKS cluster."
+  description = "Path to the kubeconfig file used for accessing the EKS cluster."
   value       = cloudpilotai_eks_cluster.this.kubeconfig
 }
 
