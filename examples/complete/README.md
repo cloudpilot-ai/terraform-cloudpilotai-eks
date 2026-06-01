@@ -2,6 +2,11 @@
 
 This example demonstrates a full CloudPilot AI deployment with both Node Autoscaler and Workload Autoscaler, including custom nodeclasses, nodepools, recommendation policies, autoscaling policies, and proactive optimization filters.
 
+## GitHub Links
+
+- Example directory: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/tree/main/examples/complete
+- `main.tf`: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/blob/main/examples/complete/main.tf
+
 ## What This Example Does
 
 - Installs the CloudPilot AI Node Autoscaler with rebalance enabled

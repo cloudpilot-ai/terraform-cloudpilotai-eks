@@ -2,6 +2,11 @@
 
 This example deploys only the CloudPilot AI Node Autoscaler with custom NodeClass and NodePool configurations. The Workload Autoscaler is not deployed.
 
+## GitHub Links
+
+- Example directory: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/tree/main/examples/node-autoscaler-only
+- `main.tf`: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/blob/main/examples/node-autoscaler-only/main.tf
+
 ## What This Example Does
 
 - Installs the CloudPilot AI Node Autoscaler with optimization enabled

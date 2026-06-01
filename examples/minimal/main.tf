@@ -4,7 +4,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = "~> 0.1"
+      version = ">= 0.2.0"
     }
   }
 }
@@ -15,7 +15,7 @@ provider "cloudpilotai" {
 }
 
 module "cloudpilotai_eks" {
-  source = "../../"
+  source = "cloudpilot-ai/eks/cloudpilotai"
 
   cluster_name       = var.cluster_name
   region             = var.region
