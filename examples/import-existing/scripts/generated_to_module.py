@@ -31,14 +31,6 @@ WA_DEFAULTS = {
     "enable_upgrade": "false",
 }
 
-NESTED_REPLACEMENTS = {
-    "extra_cpu_allocation_mcore = null": "extra_cpu_allocation_mcore = 0",
-    "extra_memory_allocation_mib = null": "extra_memory_allocation_mib = 0",
-    "extra_cpu_allocation_mcore  = null": "extra_cpu_allocation_mcore  = 0",
-    "extra_memory_allocation_mib = null": "extra_memory_allocation_mib = 0",
-}
-
-
 def extract_resource_block(text: str, resource_type: str) -> str | None:
     for match in RESOURCE_HEADER_RE.finditer(text):
         if match.group(1) != resource_type:
@@ -80,13 +72,6 @@ def split_top_level_chunks(body: str) -> list[tuple[str | None, str]]:
 
     return chunks
 
-
-def normalize_nested_values(text: str) -> str:
-    for old, new in NESTED_REPLACEMENTS.items():
-        text = text.replace(old, new)
-    return text
-
-
 def rewrite_top_level_scalar(key: str, value: str) -> str:
     return f"  {key} = {value}\n"
 
@@ -99,7 +84,6 @@ def transform_cluster_body(body: str) -> list[str]:
         if key is None:
             continue
 
-        chunk = normalize_nested_values(chunk)
         line_match = TOP_LEVEL_ATTR_RE.match(chunk.splitlines()[0])
         if not line_match:
             continue
