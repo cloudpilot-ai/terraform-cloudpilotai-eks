@@ -14,19 +14,6 @@ RESOURCE_WITH_ID_RE = re.compile(
 )
 TOP_LEVEL_ATTR_RE = re.compile(r"^  ([a-zA-Z0-9_]+)\s+=\s+(.*)$")
 
-CLUSTER_DEFAULTS = {
-    "disable_workload_uploading": "false",
-    "only_install_agent": "false",
-    "enable_upgrade": "false",
-    "skip_restore": "false",
-    "restore_node_number": "0",
-}
-
-WA_DEFAULTS = {
-    "storage_class": "\"\"",
-    "enable_node_agent": "true",
-}
-
 def extract_resource_block(text: str, resource_type: str) -> str | None:
     for match in RESOURCE_HEADER_RE.finditer(text):
         if match.group(1) != resource_type:
@@ -95,6 +82,15 @@ def strip_removed_cluster_setting_fields(chunk: str) -> str:
     return "".join(kept_lines)
 
 
+def normalize_cluster_setting_command_nulls(chunk: str) -> str:
+    return re.sub(
+        r"^(\s+(?:pre_run_command|post_run_command)\s+=\s+)null$",
+        r'\1""',
+        chunk,
+        flags=re.MULTILINE,
+    )
+
+
 def strip_removed_block_device_fields(chunk: str) -> str:
     removed_keys = ("delete_on_termination", "iops", "kms_key_id", "snapshot_id", "throughput")
     kept_lines = [
@@ -118,6 +114,7 @@ def transform_cluster_body(body: str) -> list[str]:
         value = line_match.group(2).strip()
 
         if key == "cluster_id":
+            output.append(rewrite_top_level_scalar("cluster_id", "var.cluster_id"))
             continue
         if key == "aws_profile":
             output.append(
@@ -137,13 +134,11 @@ def transform_cluster_body(body: str) -> list[str]:
             continue
         if key == "enable_upload_config":
             continue
-        if key in CLUSTER_DEFAULTS and value == "null":
-            output.append(rewrite_top_level_scalar(key, CLUSTER_DEFAULTS[key]))
-            continue
         if key == "cluster_setting":
             chunk = strip_removed_cluster_setting_fields(chunk)
             if chunk == "":
                 continue
+            chunk = normalize_cluster_setting_command_nulls(chunk)
         chunk = strip_removed_block_device_fields(chunk)
 
         output.append(chunk)
@@ -159,6 +154,10 @@ def transform_cluster_setting_body(body: str | None) -> str | None:
     for key, chunk in split_top_level_chunks(body):
         if key in (None, "cluster_id", "maintenance_enabled"):
             continue
+        if key in ("pre_run_command", "post_run_command"):
+            line_match = TOP_LEVEL_ATTR_RE.match(chunk.splitlines()[0])
+            if line_match and line_match.group(2).strip() == "null":
+                chunk = rewrite_top_level_scalar(key, '""')
         attrs.append(indent_block(chunk, "  "))
 
     if not attrs:
@@ -200,8 +199,6 @@ def transform_wa_body(body: str) -> tuple[list[str], bool]:
             continue
 
         if key in key_map:
-            if value == "null":
-                value = WA_DEFAULTS[key]
             output.append(rewrite_top_level_scalar(key_map[key], value))
             continue
 

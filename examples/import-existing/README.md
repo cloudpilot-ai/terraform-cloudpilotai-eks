@@ -106,7 +106,8 @@ What the script does:
 - converts the discovered provider resource config into `module "cloudpilotai_eks" { source = "cloudpilot-ai/eks/cloudpilotai" ... }`
 - preserves `cloudpilotai_eks_cluster.cluster_setting` when the generated config already uses the nested form, and folds legacy standalone `cloudpilotai_cluster_setting` blocks into the same module input
 - maps Workload Autoscaler settings into module inputs like `wa_storage_class` and `wa_enable_node_agent`
-- normalizes provider defaults like `false`, `0`, and `""` where Terraform generated `null`
+- preserves the discovered values from `generated.tf` instead of rewriting `null` into module or provider defaults, except that `cluster_setting.pre_run_command` and `post_run_command` are normalized from `null` to `""` to match the current provider state representation
+- performs only structural conversion where the module shape differs from the raw provider resources, such as renaming Workload Autoscaler inputs or wiring `cluster_id` / `aws_profile` through variables
 - keeps `aws_profile` wired to `var.aws_profile`
 - intentionally omits `kubeconfig` so the provider can derive it from `cluster_name + region + aws_profile`
 
@@ -180,8 +181,6 @@ Expected result:
 - You may see a small number of **operational-only** updates on the first module plan, such as:
   - `aws_profile`
   - `kubeconfig = (known after apply)`
-  - provider defaults like `only_install_agent = false`, `skip_restore = false`, `restore_node_number = 0`
-  - Workload Autoscaler operational fields like `wa_enable_node_agent = true`, `wa_storage_class = ""`, and `kubeconfig = (known after apply)`
 - You should **not** see unexpected creates, deletes, or policy/nodepool/nodeclass rewrites
 
 If Terraform still shows drift:
