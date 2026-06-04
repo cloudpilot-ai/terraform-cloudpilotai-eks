@@ -12,6 +12,12 @@ variable "region" {
   type        = string
 }
 
+variable "cluster_id" {
+  description = "Optional existing CloudPilot cluster ID. When set, the provider uses this value instead of re-generating the cluster ID locally."
+  type        = string
+  default     = null
+}
+
 ################################################################################
 # EKS Cluster - Authentication & Access
 ################################################################################
@@ -56,28 +62,28 @@ variable "disable_workload_uploading" {
   default     = false
 }
 
-variable "enable_upgrade_agent" {
-  description = "Enable upgrading the CloudPilot AI agent to the latest version."
+variable "enable_upgrade" {
+  description = "Enable upgrading CloudPilot AI components through the cluster upgrade script. The provider checks whether the cluster needs upgrade first, and only runs the upgrade when required. When custom_node_role is set, it is passed to the upgrade script."
   type        = bool
   default     = false
 }
 
-variable "enable_upgrade_rebalance_component" {
-  description = "Enable upgrading the CloudPilot AI rebalance component. Overrides only_install_agent if set to true."
-  type        = bool
-  default     = false
-}
+################################################################################
+# Cluster Setting
+################################################################################
 
-variable "enable_upload_config" {
-  description = "Enable uploading of nodepool and nodeclass configuration to CloudPilot AI."
-  type        = bool
-  default     = true
-}
-
-variable "enable_diversity_instance_type" {
-  description = "Enable diverse instance types for improved fault tolerance and cost optimization."
-  type        = bool
-  default     = false
+variable "cluster_setting" {
+  description = <<-EOT
+    Optional cluster-level setting object. When null, this module does not manage
+    /api/v1/clusters/{cluster_id}/setting. Supported fields:
+    - enable_node_repair
+    - enable_disk_monitor
+    - discount
+    - pre_run_command
+    - post_run_command
+  EOT
+  type        = any
+  default     = null
 }
 
 ################################################################################
@@ -105,6 +111,7 @@ variable "nodeclass_templates" {
     List of NodeClass template objects for reuse across nodeclasses. Each object supports:
     - template_name (Required) - Template identifier
     - role, enable_image_accelerator, instance_tags, system_disk_size_gib,
+      ami_alias, user_data, block_device_mappings,
       extra_cpu_allocation_mcore, extra_memory_allocation_mib,
       subnet_selector_terms, security_group_selector_terms (all Optional)
   EOT
@@ -117,7 +124,8 @@ variable "nodeclasses" {
     List of NodeClass objects defining EC2 instance configurations. Each object supports:
     - name (Required) - NodeClass name (default CloudPilot name is "cloudpilot")
     - template_name, role, enable_image_accelerator, origin_nodeclass_json,
-      instance_tags, system_disk_size_gib, extra_cpu_allocation_mcore,
+      instance_tags, system_disk_size_gib, ami_alias, user_data,
+      block_device_mappings, extra_cpu_allocation_mcore,
       extra_memory_allocation_mib, subnet_selector_terms,
       security_group_selector_terms (all Optional)
   EOT
@@ -136,7 +144,7 @@ variable "nodepool_templates" {
     - enable, nodeclass, enable_gpu, enable_image_accelerator, provision_priority,
       instance_arch, instance_family, capacity_type, zone,
       instance_cpu_min, instance_cpu_max, instance_memory_min, instance_memory_max,
-      node_disruption_limit, node_disruption_delay (all Optional)
+      node_disruption_limit, node_disruption_delay, labels, taints (all Optional)
   EOT
   type        = any
   default     = []
@@ -150,7 +158,7 @@ variable "nodepools" {
       origin_nodepool_json, provision_priority, instance_arch, instance_family,
       capacity_type, zone, instance_cpu_min, instance_cpu_max,
       instance_memory_min, instance_memory_max, node_disruption_limit,
-      node_disruption_delay (all Optional)
+      node_disruption_delay, labels, taints (all Optional)
   EOT
   type        = any
   default     = []
@@ -204,10 +212,46 @@ variable "wa_enable_node_agent" {
   default     = true
 }
 
-variable "wa_enable_upgrade" {
-  description = "Enable upgrading the Workload Autoscaler component. When true, the component is always re-installed on every apply to pick up the latest version."
+variable "wa_enable_new_workloads_proactive_update" {
+  description = "Enable proactive update automatically for new workloads once recommendations are ready."
   type        = bool
   default     = false
+}
+
+variable "wa_limiter_quota_per_window" {
+  description = "Workload Autoscaler limiter quota per window."
+  type        = number
+  default     = 5
+}
+
+variable "wa_limiter_burst" {
+  description = "Workload Autoscaler limiter burst."
+  type        = number
+  default     = 10
+}
+
+variable "wa_limiter_window_seconds" {
+  description = "Workload Autoscaler limiter window in seconds."
+  type        = number
+  default     = 30
+}
+
+variable "wa_enable_preempted_pod_gc" {
+  description = "Enable garbage collection for preempted pods."
+  type        = bool
+  default     = true
+}
+
+variable "wa_preempted_pod_gc_ttl" {
+  description = "TTL for preempted pod garbage collection, for example 30m."
+  type        = string
+  default     = "30m"
+}
+
+variable "wa_enable_initial_optimization_data_window_check" {
+  description = "Require initial optimization data window before enabling update paths for new workloads."
+  type        = bool
+  default     = true
 }
 
 ################################################################################
@@ -222,7 +266,9 @@ variable "recommendation_policies" {
     - history_window_memory (Required) - Memory history window duration (e.g. "48h")
     - evaluation_period (Required) - Evaluation period (e.g. "1m")
     - strategy_type, percentile_cpu, percentile_memory, buffer_cpu, buffer_memory,
-      request_min_cpu, request_min_memory, request_max_cpu, request_max_memory (all Optional)
+      request_min_cpu, request_min_memory, request_max_cpu, request_max_memory,
+      jvm_heap_buffer, jvm_min_heap_xms_ratio_of_memory,
+      jvm_recent_non_heap_window, jvm_heap_used_percentile (all Optional)
   EOT
   type        = any
   default     = []
@@ -241,7 +287,9 @@ variable "autoscaling_policies" {
       update_resources, drift_threshold_cpu, drift_threshold_memory,
       on_policy_removal, startup_boost_enabled, startup_boost_min_boost_duration,
       startup_boost_min_ready_duration, startup_boost_multiplier_cpu,
-      startup_boost_multiplier_memory, in_place_fallback_default_policy (all Optional)
+      startup_boost_multiplier_memory, disable_runtime_optimization,
+      target_refs.label_selector, in_place_fallback_default_policy,
+      in_place_fallback_reason_policies (all Optional)
   EOT
   type        = any
   default     = []

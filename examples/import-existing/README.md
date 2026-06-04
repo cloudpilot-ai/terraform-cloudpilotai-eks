@@ -9,6 +9,8 @@ This follows the discovery flow from [`terraform-provider-cloudpilotai/examples/
 
 The conversion script is intentionally scoped to the exact `generated.tf` format emitted by Terraform. It is **not** a generic HCL refactoring tool. Run it against a fresh `generated.tf` before manual edits; if you hand-edit the provider resource file first, regenerate it instead of expecting the script to understand arbitrary HCL.
 
+The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly edits today. For Karpenter CRD fields outside this typed surface, use `origin_nodeclass_json` or `origin_nodepool_json` on the corresponding object.
+
 ## GitHub Links
 
 - Example directory: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/tree/main/examples/import-existing
@@ -102,7 +104,8 @@ By default it writes:
 What the script does:
 
 - converts the discovered provider resource config into `module "cloudpilotai_eks" { source = "cloudpilot-ai/eks/cloudpilotai" ... }`
-- maps Workload Autoscaler settings into module inputs like `wa_storage_class`, `wa_enable_node_agent`, and `wa_enable_upgrade`
+- preserves `cloudpilotai_eks_cluster.cluster_setting` when the generated config already uses the nested form, and folds legacy standalone `cloudpilotai_cluster_setting` blocks into the same module input
+- maps Workload Autoscaler settings into module inputs like `wa_storage_class` and `wa_enable_node_agent`
 - normalizes provider defaults like `false`, `0`, and `""` where Terraform generated `null`
 - keeps `aws_profile` wired to `var.aws_profile`
 - intentionally omits `kubeconfig` so the provider can derive it from `cluster_name + region + aws_profile`
@@ -178,7 +181,7 @@ Expected result:
   - `aws_profile`
   - `kubeconfig = (known after apply)`
   - provider defaults like `only_install_agent = false`, `skip_restore = false`, `restore_node_number = 0`
-  - Workload Autoscaler operational fields like `wa_enable_node_agent = true`, `wa_enable_upgrade = false`, `wa_storage_class = ""`, and `kubeconfig = (known after apply)`
+  - Workload Autoscaler operational fields like `wa_enable_node_agent = true`, `wa_storage_class = ""`, and `kubeconfig = (known after apply)`
 - You should **not** see unexpected creates, deletes, or policy/nodepool/nodeclass rewrites
 
 If Terraform still shows drift:

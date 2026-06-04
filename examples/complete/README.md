@@ -2,6 +2,8 @@
 
 This example demonstrates a full CloudPilot AI deployment with both Node Autoscaler and Workload Autoscaler, including custom nodeclasses, nodepools, recommendation policies, autoscaling policies, and proactive optimization filters.
 
+The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly edits today. For Karpenter CRD fields outside this typed surface, use `origin_nodeclass_json` or `origin_nodepool_json` on the corresponding object.
+
 ## GitHub Links
 
 - Example directory: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/tree/main/examples/complete
@@ -10,8 +12,9 @@ This example demonstrates a full CloudPilot AI deployment with both Node Autosca
 ## What This Example Does
 
 - Installs the CloudPilot AI Node Autoscaler with rebalance enabled
-- Configures a custom NodeClass (`cloudpilot`) with 30 GiB system disk
-- Configures a NodePool (`cloudpilot-general`) with spot and on-demand capacity
+- Manages cluster-level CloudPilot AI settings
+- Configures a custom NodeClass (`cloudpilot`) with frontend-managed AMI, user data, tags, and block device settings
+- Configures a NodePool (`cloudpilot-general`) with spot and on-demand capacity, labels, and taints
 - Defines a workload for optimization
 - Deploys the Workload Autoscaler with:
   - Two recommendation policies (`balanced` and `cost-savings`)

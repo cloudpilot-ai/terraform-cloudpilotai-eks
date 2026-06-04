@@ -15,8 +15,11 @@ This module supports both Terraform and OpenTofu.
 - Install and configure the CloudPilot AI Node Autoscaler on EKS clusters
 - Optionally deploy the Workload Autoscaler with recommendation and autoscaling policies
 - Manage NodeClasses and NodePools for Karpenter-based node provisioning
+- Manage cluster-level CloudPilot AI settings
 - Configure workload-level optimization (spot-friendly, rebalance, min non-spot replicas)
 - Enable proactive optimization for automatic workload right-sizing
+
+The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly edits today. For Karpenter CRD fields outside this typed surface, use `origin_nodeclass_json` or `origin_nodepool_json` on the corresponding object.
 
 ## Prerequisites
 
@@ -60,11 +63,42 @@ module "cloudpilotai_eks" {
   enable_rebalance    = true
   restore_node_number = 3
 
+  cluster_setting = {
+    enable_node_repair  = true
+    enable_disk_monitor = true
+    discount            = 0.15
+    pre_run_command = <<-EOT
+      set -euo pipefail
+
+      echo "pre run start"
+      aws sts get-caller-identity
+      kubectl get nodes
+    EOT
+    post_run_command = <<-EOT
+      set -euo pipefail
+
+      echo "post run start"
+      kubectl get pods -A
+    EOT
+  }
+
   nodeclasses = [
     {
-      name                 = "cloudpilot"
-      system_disk_size_gib = 30
-      instance_tags        = { "cloudpilot.ai/managed" = "true" }
+      name          = "cloudpilot"
+      ami_alias     = "al2023@latest"
+      user_data     = "#!/bin/bash\necho cloudpilot"
+      instance_tags = { "cloudpilot.ai/managed" = "true" }
+      block_device_mappings = [
+        {
+          device_name = "/dev/xvda"
+          root_volume = true
+          ebs = {
+            volume_size = "80Gi"
+            volume_type = "gp3"
+            encrypted   = true
+          }
+        }
+      ]
     }
   ]
 
@@ -75,6 +109,14 @@ module "cloudpilotai_eks" {
       enable        = true
       capacity_type = ["spot", "on-demand"]
       instance_arch = ["amd64"]
+      labels        = { team = "platform" }
+      taints = [
+        {
+          key    = "dedicated"
+          value  = "wa"
+          effect = "NoSchedule"
+        }
+      ]
     }
   ]
 
@@ -128,6 +170,10 @@ module "cloudpilotai_eks" {
       evaluation_period     = "1m"
       buffer_cpu            = "10%"
       buffer_memory         = "20%"
+      jvm_heap_buffer       = "300Mi"
+      jvm_min_heap_xms_ratio_of_memory = "0.25"
+      jvm_recent_non_heap_window       = "2h"
+      jvm_heap_used_percentile         = 20
     }
   ]
 
@@ -136,11 +182,20 @@ module "cloudpilotai_eks" {
       name                       = "default-ap"
       enable                     = true
       recommendation_policy_name = "balanced"
+      disable_runtime_optimization = false
+      in_place_fallback_reason_policies = {
+        JVMHeapDrift = "hold"
+      }
 
       target_refs = [
         {
           api_version = "apps/v1"
           kind        = "Deployment"
+          label_selector = {
+            match_labels = {
+              app = "my-app"
+            }
+          }
         }
       ]
 
@@ -187,6 +242,7 @@ module "cloudpilotai_eks" {
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
+| `cluster_id` | Optional existing CloudPilot cluster ID override | `string` | `null` |
 | `aws_profile` | AWS CLI named profile for AWS operations | `string` | `""` |
 | `kubeconfig` | Path to the kubeconfig file | `string` | `null` |
 | `custom_node_role` | Custom IAM role name for EC2 instances | `string` | `null` |
@@ -198,10 +254,12 @@ module "cloudpilotai_eks" {
 | `only_install_agent` | Only install the agent without optimization | `bool` | `false` |
 | `enable_rebalance` | Enable automatic workload rebalancing | `bool` | `false` |
 | `disable_workload_uploading` | Disable workload information uploading | `bool` | `false` |
-| `enable_upgrade_agent` | Enable agent auto-upgrade | `bool` | `false` |
-| `enable_upgrade_rebalance_component` | Enable rebalance component auto-upgrade | `bool` | `false` |
-| `enable_upload_config` | Enable nodepool/nodeclass config uploading | `bool` | `true` |
-| `enable_diversity_instance_type` | Enable diverse instance types | `bool` | `false` |
+| `enable_upgrade` | Enable CloudPilot AI component upgrade through the cluster upgrade script | `bool` | `false` |
+### Cluster Setting
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `cluster_setting` | Optional cluster-level setting object | `any` | `null` |
 
 ### Node Autoscaler -- Destroy / Restore
 
@@ -233,7 +291,13 @@ module "cloudpilotai_eks" {
 | `enable_workload_autoscaler` | Whether to deploy the Workload Autoscaler | `bool` | `true` |
 | `wa_storage_class` | StorageClass for VictoriaMetrics persistent volume | `string` | `""` |
 | `wa_enable_node_agent` | Enable Node Agent DaemonSet | `bool` | `true` |
-| `wa_enable_upgrade` | Enable Workload Autoscaler component auto-upgrade | `bool` | `false` |
+| `wa_enable_new_workloads_proactive_update` | Enable proactive update automatically for new workloads | `bool` | `false` |
+| `wa_limiter_quota_per_window` | Workload Autoscaler limiter quota per window | `number` | `5` |
+| `wa_limiter_burst` | Workload Autoscaler limiter burst | `number` | `10` |
+| `wa_limiter_window_seconds` | Workload Autoscaler limiter window in seconds | `number` | `30` |
+| `wa_enable_preempted_pod_gc` | Enable garbage collection for preempted pods | `bool` | `true` |
+| `wa_preempted_pod_gc_ttl` | TTL for preempted pod garbage collection | `string` | `"30m"` |
+| `wa_enable_initial_optimization_data_window_check` | Require initial optimization data window before enabling update paths | `bool` | `true` |
 | `recommendation_policies` | List of RecommendationPolicy objects | `any` | `[]` |
 | `autoscaling_policies` | List of AutoscalingPolicy objects | `any` | `[]` |
 | `enable_proactive` | Workload filters to enable proactive optimization | `any` | `[]` |
@@ -262,7 +326,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.2.0"
+      version = ">= 0.3.0"
     }
   }
 }

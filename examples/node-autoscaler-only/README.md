@@ -2,6 +2,8 @@
 
 This example deploys only the CloudPilot AI Node Autoscaler with custom NodeClass and NodePool configurations. The Workload Autoscaler is not deployed.
 
+The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly edits today. For Karpenter CRD fields outside this typed surface, use `origin_nodeclass_json` or `origin_nodepool_json` on the corresponding object.
+
 ## GitHub Links
 
 - Example directory: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/tree/main/examples/node-autoscaler-only
