@@ -2,6 +2,8 @@
 
 This example demonstrates the simplest setup: installing the CloudPilot AI agent on an existing EKS cluster in read-only mode. The Workload Autoscaler is disabled.
 
+The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly edits today. For Karpenter CRD fields outside this typed surface, use `origin_nodeclass_json` or `origin_nodepool_json` on the corresponding object.
+
 ## GitHub Links
 
 - Example directory: https://github.com/cloudpilot-ai/terraform-cloudpilotai-eks/tree/main/examples/minimal

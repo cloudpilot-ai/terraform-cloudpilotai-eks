@@ -9,7 +9,7 @@ import sys
 
 RESOURCE_HEADER_RE = re.compile(r'^resource\s+"([^"]+)"\s+"([^"]+)"\s+\{$', re.MULTILINE)
 RESOURCE_WITH_ID_RE = re.compile(
-    r'# __generated__ by Terraform from "([^"]+)"\s+resource\s+"([^"]+)"\s+"([^"]+)"\s+\{',
+    r'# __generated__ by (?:Terraform|OpenTofu) from "([^"]+)"\s+resource\s+"([^"]+)"\s+"([^"]+)"\s+\{',
     re.MULTILINE,
 )
 TOP_LEVEL_ATTR_RE = re.compile(r"^  ([a-zA-Z0-9_]+)\s+=\s+(.*)$")
@@ -17,10 +17,7 @@ TOP_LEVEL_ATTR_RE = re.compile(r"^  ([a-zA-Z0-9_]+)\s+=\s+(.*)$")
 CLUSTER_DEFAULTS = {
     "disable_workload_uploading": "false",
     "only_install_agent": "false",
-    "enable_upgrade_agent": "false",
-    "enable_upgrade_rebalance_component": "false",
-    "enable_upload_config": "true",
-    "enable_diversity_instance_type": "false",
+    "enable_upgrade": "false",
     "skip_restore": "false",
     "restore_node_number": "0",
 }
@@ -28,7 +25,6 @@ CLUSTER_DEFAULTS = {
 WA_DEFAULTS = {
     "storage_class": "\"\"",
     "enable_node_agent": "true",
-    "enable_upgrade": "false",
 }
 
 def extract_resource_block(text: str, resource_type: str) -> str | None:
@@ -76,6 +72,38 @@ def rewrite_top_level_scalar(key: str, value: str) -> str:
     return f"  {key} = {value}\n"
 
 
+def indent_block(text: str, prefix: str) -> str:
+    return "".join(prefix + line if line.strip() else line for line in text.splitlines(keepends=True))
+
+
+def has_top_level_key(body: str, key: str) -> bool:
+    return any(chunk_key == key for chunk_key, _ in split_top_level_chunks(body))
+
+
+def strip_removed_cluster_setting_fields(chunk: str) -> str:
+    kept_lines = [
+        line for line in chunk.splitlines(keepends=True)
+        if not re.match(r"^\s+maintenance_enabled\s+=", line)
+    ]
+
+    non_empty_inner_lines = [
+        line for line in kept_lines[1:-1]
+        if line.strip()
+    ]
+    if kept_lines and kept_lines[0].lstrip().startswith("cluster_setting") and not non_empty_inner_lines:
+        return ""
+    return "".join(kept_lines)
+
+
+def strip_removed_block_device_fields(chunk: str) -> str:
+    removed_keys = ("delete_on_termination", "iops", "kms_key_id", "snapshot_id", "throughput")
+    kept_lines = [
+        line for line in chunk.splitlines(keepends=True)
+        if not any(re.match(rf"^\s+{key}\s+=", line) for key in removed_keys)
+    ]
+    return "".join(kept_lines)
+
+
 def transform_cluster_body(body: str) -> list[str]:
     output: list[str] = []
     chunks = split_top_level_chunks(body)
@@ -105,13 +133,42 @@ def transform_cluster_body(body: str) -> list[str]:
             continue
         if key == "kubeconfig":
             continue
+        if key == "enable_diversity_instance_type":
+            continue
+        if key == "enable_upload_config":
+            continue
         if key in CLUSTER_DEFAULTS and value == "null":
             output.append(rewrite_top_level_scalar(key, CLUSTER_DEFAULTS[key]))
             continue
+        if key == "cluster_setting":
+            chunk = strip_removed_cluster_setting_fields(chunk)
+            if chunk == "":
+                continue
+        chunk = strip_removed_block_device_fields(chunk)
 
         output.append(chunk)
 
     return output
+
+
+def transform_cluster_setting_body(body: str | None) -> str | None:
+    if body is None:
+        return None
+
+    attrs: list[str] = []
+    for key, chunk in split_top_level_chunks(body):
+        if key in (None, "cluster_id", "maintenance_enabled"):
+            continue
+        attrs.append(indent_block(chunk, "  "))
+
+    if not attrs:
+        return None
+
+    return "".join([
+        "  cluster_setting = {\n",
+        *attrs,
+        "  }\n",
+    ])
 
 
 def transform_wa_body(body: str) -> tuple[list[str], bool]:
@@ -121,7 +178,13 @@ def transform_wa_body(body: str) -> tuple[list[str], bool]:
     key_map = {
         "storage_class": "wa_storage_class",
         "enable_node_agent": "wa_enable_node_agent",
-        "enable_upgrade": "wa_enable_upgrade",
+        "enable_new_workloads_proactive_update": "wa_enable_new_workloads_proactive_update",
+        "limiter_quota_per_window": "wa_limiter_quota_per_window",
+        "limiter_burst": "wa_limiter_burst",
+        "limiter_window_seconds": "wa_limiter_window_seconds",
+        "enable_preempted_pod_gc": "wa_enable_preempted_pod_gc",
+        "preempted_pod_gc_ttl": "wa_preempted_pod_gc_ttl",
+        "enable_initial_optimization_data_window_check": "wa_enable_initial_optimization_data_window_check",
     }
 
     for key, chunk in chunks:
@@ -147,7 +210,12 @@ def transform_wa_body(body: str) -> tuple[list[str], bool]:
     return output, True
 
 
-def build_module_file(cluster_body: str, wa_body: str | None, source: str) -> str:
+def build_module_file(
+    cluster_body: str,
+    cluster_setting_body: str | None,
+    wa_body: str | None,
+    source: str,
+) -> str:
     lines = [
         "# Generated from generated.tf by scripts/generated_to_module.py.\n",
         "# Review this file before committing it.\n",
@@ -160,6 +228,10 @@ def build_module_file(cluster_body: str, wa_body: str | None, source: str) -> st
     ]
 
     lines.extend(transform_cluster_body(cluster_body))
+    if not has_top_level_key(cluster_body, "cluster_setting"):
+        legacy_cluster_setting = transform_cluster_setting_body(cluster_setting_body)
+        if legacy_cluster_setting is not None:
+            lines.append(legacy_cluster_setting)
 
     if wa_body is None:
         lines.append("\n")
@@ -230,9 +302,10 @@ def main() -> int:
         return 1
 
     wa_body = extract_resource_block(text, "cloudpilotai_workload_autoscaler")
+    cluster_setting_body = extract_resource_block(text, "cloudpilotai_cluster_setting")
     cluster_id = extract_import_id(text, "cloudpilotai_eks_cluster")
 
-    module_text = build_module_file(cluster_body, wa_body, args.module_source)
+    module_text = build_module_file(cluster_body, cluster_setting_body, wa_body, args.module_source)
     output_path = pathlib.Path(args.output)
     output_path.write_text(module_text)
 
