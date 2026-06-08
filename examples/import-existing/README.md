@@ -52,11 +52,13 @@ Fill in:
 - `cloudpilot_api_key`
 - `cluster_id`
 - optionally `aws_profile`
+- optionally `aws_assume_role`
 
 Important:
 
 - `cluster_id` is used by the bootstrap import blocks and later by the helper import script
 - `aws_profile` is optional; if omitted, the default AWS profile or environment credentials are used
+- `aws_assume_role` is optional local execution context for post-import CRUD runs and cannot be recovered from the CloudPilot API
 
 ## Step 2: Initialize Terraform
 
@@ -110,6 +112,7 @@ What the script does:
 - performs only structural conversion where the module shape differs from the raw provider resources, such as renaming Workload Autoscaler inputs or wiring `cluster_id` / `aws_profile` through variables
 - keeps `aws_profile` wired to `var.aws_profile`
 - intentionally omits `kubeconfig` so the provider can derive it from `cluster_name + region + aws_profile`
+- does not infer `aws_assume_role`; add it manually after conversion if your post-import CRUD runs need a target role
 
 ## Manual Validation Required
 
@@ -117,6 +120,8 @@ Some inputs are not reliably recoverable from the CloudPilot API and must be che
 
 - `aws_profile`
   This is purely local execution context. The generated module config keeps it as `var.aws_profile`, but only you know which profile should be used in your environment.
+- `aws_assume_role`
+  This is local execution context, just like `aws_profile`. The CloudPilot API cannot recover it, so if your post-import CRUD runs need a target role, add it manually after conversion.
 - `custom_node_role`
   The service may expose nodeclass roles, but that is not the same contract as the top-level module/provider `custom_node_role` input. If your original setup used a custom node IAM role to grant controller `PassNodeIAMRole`, verify and set this field explicitly.
 
@@ -153,6 +158,7 @@ It should **not** contain the bootstrap import blocks or the raw provider resour
 Before moving on, open `main.module.tf` and explicitly verify:
 
 - `aws_profile`
+- `aws_assume_role`
 - `custom_node_role`
 
 ## Step 7: Import the Existing Resources Into the Module Addresses
@@ -180,6 +186,7 @@ Expected result:
 
 - You may see a small number of **operational-only** updates on the first module plan, such as:
   - `aws_profile`
+  - `aws_assume_role`
   - `kubeconfig = (known after apply)`
 - You should **not** see unexpected creates, deletes, or policy/nodepool/nodeclass rewrites
 

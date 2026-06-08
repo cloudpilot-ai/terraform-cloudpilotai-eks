@@ -20,3 +20,9 @@ variable "aws_profile" {
   type        = string
   default     = ""
 }
+
+variable "aws_assume_role" {
+  description = "Optional IAM role to assume for AWS operations after migration. This is local execution context and cannot be recovered from the CloudPilot API."
+  type        = any
+  default     = null
+}

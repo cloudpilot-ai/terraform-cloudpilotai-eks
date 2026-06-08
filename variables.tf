@@ -28,6 +28,12 @@ variable "aws_profile" {
   default     = ""
 }
 
+variable "aws_assume_role" {
+  description = "Optional IAM role to assume for CloudPilot AWS CLI, kubeconfig, kubectl, and helm operations. Source credentials still come from aws_profile or the ambient AWS credential chain."
+  type        = any
+  default     = null
+}
+
 variable "kubeconfig" {
   description = "Path to the kubeconfig file for accessing the EKS cluster. If not set, the provider generates it automatically."
   type        = string
