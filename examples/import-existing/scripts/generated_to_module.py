@@ -217,7 +217,7 @@ def build_module_file(
         "# Generated from generated.tf by scripts/generated_to_module.py.\n",
         "# Review this file before committing it.\n",
         "# Manual validation still required for fields the CloudPilot API cannot fully recover.\n",
-        "# In particular, verify aws_profile and custom_node_role against your original Terraform/AWS setup.\n",
+        "# In particular, verify aws_profile, aws_assume_role, and custom_node_role against your original Terraform/AWS setup.\n",
         "\n",
         "module \"cloudpilotai_eks\" {\n",
         f"  source = \"{source}\"\n",

@@ -30,6 +30,24 @@ The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly 
 
 ## Usage
 
+### Terraform-only CI/CD assume role
+
+```hcl
+module "cloudpilotai_eks" {
+  source = "cloudpilot-ai/eks/cloudpilotai"
+
+  cluster_name = "my-eks-cluster"
+  region       = "us-west-2"
+
+  aws_assume_role = {
+    role_arn     = "arn:aws:iam::123456789012:role/sts-admin"
+    session_name = "terraform-user"
+  }
+
+  enable_workload_autoscaler = false
+}
+```
+
 ### Minimal -- Install agent only
 
 ```hcl
@@ -225,6 +243,7 @@ module "cloudpilotai_eks" {
 ## Examples
 
 - [Minimal](examples/minimal/) -- Quick-start with agent-only install
+- [Onboard Existing Cluster](examples/onboard-existing-cluster/) -- Connect an existing EKS cluster to CloudPilot AI using AWS provider assume-role and module `aws_assume_role`
 - [Node Autoscaler Only](examples/node-autoscaler-only/) -- Node autoscaler with custom nodeclasses/nodepools, no Workload Autoscaler
 - [Complete](examples/complete/) -- Full configuration with both autoscalers, policies, and proactive optimization
 - [Import Existing](examples/import-existing/) -- Discover existing provider resources with `generated.tf`, convert them into module config, and then import into this module
@@ -244,6 +263,7 @@ module "cloudpilotai_eks" {
 |------|-------------|------|---------|
 | `cluster_id` | Optional existing CloudPilot cluster ID override | `string` | `null` |
 | `aws_profile` | AWS CLI named profile for AWS operations | `string` | `""` |
+| `aws_assume_role` | Optional IAM role to assume for CloudPilot AWS CLI, kubeconfig, kubectl, and helm operations | `any` | `null` |
 | `kubeconfig` | Path to the kubeconfig file | `string` | `null` |
 | `custom_node_role` | Custom IAM role name for EC2 instances | `string` | `null` |
 
@@ -326,7 +346,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.3.0"
+      version = ">= 0.4.0"
     }
   }
 }

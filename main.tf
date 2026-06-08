@@ -8,6 +8,7 @@ resource "cloudpilotai_eks_cluster" "this" {
   region       = var.region
 
   aws_profile      = var.aws_profile
+  aws_assume_role  = var.aws_assume_role
   kubeconfig       = var.kubeconfig
   custom_node_role = var.custom_node_role
 

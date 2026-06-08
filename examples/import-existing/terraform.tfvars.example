@@ -7,3 +7,9 @@ cluster_id = "00000000-0000-0000-0000-000000000000"
 
 # Optional.
 aws_profile = ""
+
+# Or use assume-role instead of aws_profile:
+# aws_assume_role = {
+#   role_arn     = "arn:aws:iam::123456789012:role/sts-admin"
+#   session_name = "terraform-user"
+# }
