@@ -1,0 +1,13 @@
+cluster_name = "my-eks-cluster"
+region       = "us-west-2"
+
+# Use a named local AWS CLI profile when your source credentials live in
+# ~/.aws/credentials or ~/.aws/config.
+aws_source_profile = "cp-source"
+
+# If you want to use the environment's default AWS credential chain instead,
+# set aws_source_profile = null.
+# aws_source_profile = null
+
+aws_assume_role_arn          = "arn:aws:iam::123456789012:role/cloudpilot-onboard"
+aws_assume_role_session_name = "cloudpilotai-onboard"
