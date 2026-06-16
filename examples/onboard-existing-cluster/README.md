@@ -388,6 +388,6 @@ unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
 
 ## Provider Version Requirement
 
-This example depends on `cloudpilot-ai/cloudpilotai` provider `>= 0.4.0`, because the module configuration uses `aws_assume_role`.
+This example depends on `cloudpilot-ai/cloudpilotai` provider `>= 0.4.1`, because the module configuration uses `aws_assume_role`.
 
 For local module checkout testing with `source = "../.."`, install the released provider from the registry with a normal `terraform init`. You only need `dev_overrides` if you are intentionally testing unpublished provider changes.
