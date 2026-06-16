@@ -17,3 +17,18 @@ output "cloudpilot_kubeconfig" {
   description = "Generated kubeconfig path. It carries the CloudPilot provider auth needed by later kubectl and helm calls."
   value       = module.cloudpilotai_eks.kubeconfig
 }
+
+output "cloudpilot_agent_version" {
+  description = "Version of the CloudPilot AI agent currently installed on the cluster."
+  value       = module.cloudpilotai_eks.agent_version
+}
+
+output "cloudpilot_onboard_manifest_version" {
+  description = "Latest CloudPilot onboard manifest version reported by the service."
+  value       = module.cloudpilotai_eks.onboard_manifest_version
+}
+
+output "cloudpilot_need_upgrade" {
+  description = "Whether CloudPilot currently reports that this cluster needs an upgrade."
+  value       = module.cloudpilotai_eks.need_upgrade
+}

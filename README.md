@@ -333,6 +333,9 @@ module "cloudpilotai_eks" {
 | `account_id` | AWS account ID where the cluster is deployed |
 | `kubeconfig` | Path to the kubeconfig file used for accessing the EKS cluster |
 | `enable_rebalance` | Whether workload rebalancing is enabled |
+| `agent_version` | Version of the CloudPilot AI agent currently installed on the cluster |
+| `onboard_manifest_version` | Latest CloudPilot onboard manifest version reported by the service |
+| `need_upgrade` | Whether CloudPilot currently reports that this cluster needs an upgrade |
 | `workload_autoscaler_enabled` | Whether the Workload Autoscaler resource was created |
 
 ## Provider Configuration
@@ -346,7 +349,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.4.0"
+      version = ">= 0.4.1"
     }
   }
 }
