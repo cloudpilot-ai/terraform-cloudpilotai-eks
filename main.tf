@@ -23,12 +23,10 @@ resource "cloudpilotai_eks_cluster" "this" {
 
   cluster_setting = var.cluster_setting
 
-  nodeclass_templates = var.nodeclass_templates
-  nodeclasses         = var.nodeclasses
-  nodepool_templates  = var.nodepool_templates
-  nodepools           = var.nodepools
-  workload_templates  = var.workload_templates
-  workloads           = var.workloads
+  nodeclasses        = local.rendered_nodeclasses
+  nodepools          = local.rendered_nodepools
+  workload_templates = []
+  workloads          = local.rendered_workloads
 }
 
 ################################################################################
