@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(terraform apply)",
+      "Bash(terraform apply:*)",
+      "Bash(terraform destroy)",
+      "Bash(terraform destroy:*)",
+      "Bash(terraform state rm:*)",
+      "Bash(terraform state push:*)",
+      "Bash(terraform import:*)",
+      "Bash(terraform force-unlock:*)",
+      "Bash(terraform taint:*)",
+      "Bash(terraform untaint:*)",
+      "Bash(tofu apply:*)",
+      "Bash(tofu destroy:*)",
+      "Bash(tofu state rm:*)",
+      "Bash(tofu import:*)",
+      "Bash(tofu force-unlock:*)"
+    ],
+    "ask": [
+      "Bash(terraform plan:*)",
+      "Bash(terraform state mv:*)",
+      "Bash(tofu plan:*)",
+      "Edit(**/*.tfvars)",
+      "Write(**/*.tfvars)",
+      "Edit(examples/**)"
+    ],
+    "allow": [
+      "Bash(terraform fmt:*)",
+      "Bash(terraform validate:*)",
+      "Bash(terraform init:*)",
+      "Bash(terraform providers:*)",
+      "Bash(terraform output:*)",
+      "Bash(terraform show:*)",
+      "Bash(terraform version)",
+      "Bash(tflint:*)",
+      "Bash(checkov:*)"
+    ]
+  }
+}
