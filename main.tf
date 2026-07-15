@@ -23,10 +23,9 @@ resource "cloudpilotai_eks_cluster" "this" {
 
   cluster_setting = var.cluster_setting
 
-  nodeclasses        = local.rendered_nodeclasses
-  nodepools          = local.rendered_nodepools
-  workload_templates = []
-  workloads          = local.rendered_workloads
+  nodeclasses = local.rendered_nodeclasses
+  nodepools   = local.rendered_nodepools
+  workloads   = local.rendered_workloads
 }
 
 ################################################################################
@@ -37,7 +36,10 @@ resource "cloudpilotai_workload_autoscaler" "this" {
   count = var.enable_workload_autoscaler ? 1 : 0
 
   cluster_id = cloudpilotai_eks_cluster.this.cluster_id
-  kubeconfig = cloudpilotai_eks_cluster.this.kubeconfig
+  kubeconfig = var.kubeconfig
+
+  aws_profile     = var.aws_profile
+  aws_assume_role = var.aws_assume_role
 
   storage_class     = var.wa_storage_class
   enable_node_agent = var.wa_enable_node_agent

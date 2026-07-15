@@ -264,7 +264,7 @@ module "cloudpilotai_eks" {
 | `cluster_id` | Optional existing CloudPilot cluster ID override | `string` | `null` |
 | `aws_profile` | AWS CLI named profile for AWS operations | `string` | `""` |
 | `aws_assume_role` | Optional IAM role to assume for CloudPilot AWS CLI, kubeconfig, kubectl, and helm operations | `any` | `null` |
-| `kubeconfig` | Path to the kubeconfig file | `string` | `null` |
+| `kubeconfig` | Optional explicit kubeconfig path. When omitted, the provider generates execution-local kubeconfigs without storing their paths in state. | `string` | `null` |
 | `custom_node_role` | Custom IAM role name for EC2 instances | `string` | `null` |
 
 ### Node Autoscaler -- Behavior
@@ -331,12 +331,18 @@ module "cloudpilotai_eks" {
 | `cluster_name` | Name of the EKS cluster |
 | `region` | AWS region where the EKS cluster is located |
 | `account_id` | AWS account ID where the cluster is deployed |
-| `kubeconfig` | Path to the kubeconfig file used for accessing the EKS cluster |
+| `kubeconfig` | Explicitly configured EKS kubeconfig path, or null when the provider generates execution-local kubeconfigs |
 | `enable_rebalance` | Whether workload rebalancing is enabled |
 | `agent_version` | Version of the CloudPilot AI agent currently installed on the cluster |
 | `onboard_manifest_version` | Latest CloudPilot onboard manifest version reported by the service |
 | `need_upgrade` | Whether CloudPilot currently reports that this cluster needs an upgrade |
 | `workload_autoscaler_enabled` | Whether the Workload Autoscaler resource was created |
+
+## Upgrading from provider-generated kubeconfig state
+
+Provider versions before 0.5.1 could store a generated path from the local Terraform or Terragrunt working directory. After upgrading the provider and this module, run a fresh plan instead of reusing an older saved plan. When `kubeconfig` is omitted, the plan removes the old path from state in place; no state edit, import, or resource replacement is required. The cluster and Workload Autoscaler resources generate their own kubeconfigs in each execution environment.
+
+If the legacy Workload Autoscaler needs `aws_profile` or `aws_assume_role`, keep `enable_workload_autoscaler = true` for this upgrade apply. Disable it or destroy the stack only after that apply has stored the new access fields; Terraform does not pass module configuration to the provider when deleting an old resource directly.
 
 ## Provider Configuration
 
@@ -349,7 +355,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.4.1"
+      version = ">= 0.5.1"
     }
   }
 }
