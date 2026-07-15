@@ -14,7 +14,7 @@ output "cloudpilot_cluster_id" {
 }
 
 output "cloudpilot_kubeconfig" {
-  description = "Generated kubeconfig path. It carries the CloudPilot provider auth needed by later kubectl and helm calls."
+  description = "Explicitly configured kubeconfig path, or null when the provider uses execution-local kubeconfigs."
   value       = module.cloudpilotai_eks.kubeconfig
 }
 
