@@ -23,6 +23,8 @@ resource "cloudpilotai_eks_cluster" "this" {
 
   cluster_setting = var.cluster_setting
 
+  scheduled_rebalances = var.scheduled_rebalances
+
   nodeclasses = local.rendered_nodeclasses
   nodepools   = local.rendered_nodepools
   workloads   = local.rendered_workloads

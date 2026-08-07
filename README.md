@@ -280,6 +280,7 @@ module "cloudpilotai_eks" {
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 | `cluster_setting` | Optional cluster-level setting object | `any` | `null` |
+| `scheduled_rebalances` | Scheduled rebalance policies; null leaves server policies unmanaged | `any` | `null` |
 
 ### Node Autoscaler -- Destroy / Restore
 
@@ -355,7 +356,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.5.1"
+      version = ">= 0.6.0"
     }
   }
 }

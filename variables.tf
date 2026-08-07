@@ -84,6 +84,8 @@ variable "cluster_setting" {
     /api/v1/clusters/{cluster_id}/setting. Supported fields:
     - enable_node_repair
     - enable_disk_monitor
+    - enable_node_pool_decommission
+    - enable_workload_min_non_spot
     - discount
     - pre_run_command
     - post_run_command
@@ -116,7 +118,7 @@ variable "nodeclass_templates" {
   description = <<-EOT
     List of NodeClass template objects for reuse across nodeclasses. Each object supports:
     - template_name (Required) - Template identifier
-    - role, enable_image_accelerator, instance_tags, system_disk_size_gib,
+    - role, enable_image_accelerator, enable_local_ssd_ephemeral_storage, instance_tags, system_disk_size_gib,
       ami_alias, user_data, block_device_mappings,
       extra_cpu_allocation_mcore, extra_memory_allocation_mib,
       subnet_selector_terms, security_group_selector_terms (all Optional)
@@ -129,7 +131,7 @@ variable "nodeclasses" {
   description = <<-EOT
     List of NodeClass objects defining EC2 instance configurations. Each object supports:
     - name (Required) - NodeClass name (default CloudPilot name is "cloudpilot")
-    - template_name, role, enable_image_accelerator, origin_nodeclass_json,
+    - template_name, role, enable_image_accelerator, enable_local_ssd_ephemeral_storage, origin_nodeclass_json,
       instance_tags, system_disk_size_gib, ami_alias, user_data,
       block_device_mappings, extra_cpu_allocation_mcore,
       extra_memory_allocation_mib, subnet_selector_terms,
@@ -150,7 +152,10 @@ variable "nodepool_templates" {
     - enable, nodeclass, enable_gpu, enable_image_accelerator, provision_priority,
       instance_arch, instance_family, capacity_type, zone,
       instance_cpu_min, instance_cpu_max, instance_memory_min, instance_memory_max,
-      node_disruption_limit, node_disruption_delay, labels, taints (all Optional)
+      node_disruption_limit, node_disruption_budgets, node_disruption_delay, labels, taints (all Optional)
+    - node_disruption_budgets supports a list of objects with nodes (Required),
+      reasons, schedule, and duration (Optional). schedule and duration must be set together.
+    - node_disruption_limit is deprecated; use node_disruption_budgets instead.
   EOT
   type        = any
   default     = []
@@ -163,8 +168,11 @@ variable "nodepools" {
     - template_name, enable, nodeclass, enable_gpu, enable_image_accelerator,
       origin_nodepool_json, provision_priority, instance_arch, instance_family,
       capacity_type, zone, instance_cpu_min, instance_cpu_max,
-      instance_memory_min, instance_memory_max, node_disruption_limit,
+      instance_memory_min, instance_memory_max, node_disruption_limit, node_disruption_budgets,
       node_disruption_delay, labels, taints (all Optional)
+    - node_disruption_budgets supports a list of objects with nodes (Required),
+      reasons, schedule, and duration (Optional). schedule and duration must be set together.
+    - node_disruption_limit is deprecated; use node_disruption_budgets instead.
   EOT
   type        = any
   default     = []
@@ -273,11 +281,21 @@ variable "recommendation_policies" {
     - evaluation_period (Required) - Evaluation period (e.g. "1m")
     - strategy_type, percentile_cpu, percentile_memory, buffer_cpu, buffer_memory,
       request_min_cpu, request_min_memory, request_max_cpu, request_max_memory,
-      jvm_heap_buffer, jvm_min_heap_xms_ratio_of_memory,
+      jvm_heap_buffer, jvm_min_heap_xms, jvm_min_heap_xms_ratio_of_memory,
       jvm_recent_non_heap_window, jvm_heap_used_percentile (all Optional)
   EOT
   type        = any
   default     = []
+}
+
+################################################################################
+# Scheduled Rebalance
+################################################################################
+
+variable "scheduled_rebalances" {
+  description = "Scheduled rebalance policies. When null, Terraform leaves all server policies unmanaged; an empty list removes only policies previously managed by this module."
+  type        = any
+  default     = null
 }
 
 ################################################################################
