@@ -25,6 +25,8 @@ The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly 
 
 ## Prerequisites
 
+This migration flow targets module v0.6.0 and provider v0.7.0 with server v1.36.4. The module and provider versions are release candidates and not yet published. Use a local provider build and pass `--module-source ../..` when validating this checkout before publication.
+
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.5
 - [Python 3](https://www.python.org/downloads/) for the migration script
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with EKS permissions
@@ -108,7 +110,9 @@ What the script does:
 - converts the discovered provider resource config into `module "cloudpilotai_eks" { source = "cloudpilot-ai/eks/cloudpilotai" ... }`
 - preserves `cloudpilotai_eks_cluster.cluster_setting` when the generated config already uses the nested form, and folds legacy standalone `cloudpilotai_cluster_setting` blocks into the same module input
 - maps Workload Autoscaler settings into module inputs like `wa_storage_class` and `wa_enable_node_agent`
-- preserves the discovered values from `generated.tf` instead of rewriting `null` into module or provider defaults, except that `cluster_setting.pre_run_command` and `post_run_command` are normalized from `null` to `""` to match the current provider state representation
+- preserves the discovered values from `generated.tf`, including null command fields and nested nulls in Memory Extension, disk policies, NodePool policies, and Workload Autoscaler policies
+- preserves released server v1.36.4 fields, including cluster cooldown/Spot strategy, Memory Extension, NRI swap, job optimization, dynamic EBS sizing, JVM bounds, and startup boost settings
+- omits maintenance mode, Saving Report baseline timestamps, and unreleased memory request estimation settings from cluster settings
 - performs only structural conversion where the module shape differs from the raw provider resources, such as renaming Workload Autoscaler inputs or wiring `cluster_id` / `aws_profile` through variables
 - keeps `aws_profile` wired to `var.aws_profile`
 - intentionally omits `kubeconfig` so the provider can derive it from `cluster_name + region + aws_profile`

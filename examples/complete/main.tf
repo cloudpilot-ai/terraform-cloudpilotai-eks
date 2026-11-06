@@ -4,7 +4,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.6.0"
+      version = ">= 0.7.0"
     }
   }
 }
@@ -46,17 +46,19 @@ module "cloudpilotai_eks" {
   # enable_upgrade                     = false
 
   cluster_setting = {
-    enable_node_repair  = true
-    enable_disk_monitor = true
-    discount            = 0.15
-    pre_run_command     = <<-EOT
+    disruption_cooldown          = "10m"
+    aws_spot_allocation_strategy = "price-capacity-optimized"
+    enable_node_repair           = true
+    enable_disk_monitor          = true
+    discount                     = 0.15
+    pre_run_command              = <<-EOT
       set -euo pipefail
 
       echo "pre run start"
       aws sts get-caller-identity
       kubectl get nodes
     EOT
-    post_run_command    = <<-EOT
+    post_run_command             = <<-EOT
       set -euo pipefail
 
       echo "post run start"
@@ -80,14 +82,27 @@ module "cloudpilotai_eks" {
       ami_alias     = "al2023@latest"
       user_data     = "#!/bin/bash\necho cloudpilot"
       instance_tags = { "cloudpilot.ai/managed" = "true" }
+      memory_extension = {
+        enabled        = true
+        reclaim_policy = "Conservative"
+        cold_memory = {
+          sizing_mode          = "Auto"
+          memory_ratio_percent = 25
+          min_gib              = 1
+          max_gib              = 16
+          max_disk_percent     = 25
+        }
+        cached_memory = { max_memory_percent = 10 }
+      }
       block_device_mappings = [
         {
           device_name = "/dev/xvda"
           root_volume = true
           ebs = {
-            volume_size = "80Gi"
-            volume_type = "gp3"
-            encrypted   = true
+            volume_size        = "80Gi"
+            volume_type        = "gp3"
+            encrypted          = true
+            volume_size_policy = { per_vcpu_gib = 2, max_size_gib = 512 }
           }
         }
       ]
@@ -109,6 +124,15 @@ module "cloudpilotai_eks" {
       instance_memory_max   = 32769
       node_disruption_limit = "2"
       node_disruption_delay = "60m"
+      disruption_cooldown   = "5m"
+      job_nodepool_optimization = {
+        min_active_nodes   = 1
+        provisioning_delay = "30s"
+      }
+      nri_swap_policy = {
+        enabled                 = true
+        memory_limit_multiplier = 2
+      }
       labels = {
         team = "platform"
       }
@@ -170,6 +194,10 @@ module "cloudpilotai_eks" {
       request_min_cpu                  = "25%"
       request_min_memory               = "30%"
       jvm_heap_buffer                  = "300Mi"
+      jvm_min_heap_xms                 = "512Mi"
+      jvm_max_heap_xms                 = "2Gi"
+      jvm_min_heap_xmx                 = "1Gi"
+      jvm_max_heap_xmx                 = "4Gi"
       jvm_min_heap_xms_ratio_of_memory = "0.25"
       jvm_recent_non_heap_window       = "2h"
       jvm_heap_used_percentile         = 20
@@ -193,14 +221,17 @@ module "cloudpilotai_eks" {
 
   autoscaling_policies = [
     {
-      name                         = "default-ap"
-      enable                       = true
-      recommendation_policy_name   = "balanced"
-      priority                     = 10
-      update_resources             = ["cpu", "memory"]
-      drift_threshold_cpu          = "5%"
-      drift_threshold_memory       = "5%"
-      disable_runtime_optimization = false
+      name                                     = "default-ap"
+      enable                                   = true
+      recommendation_policy_name               = "balanced"
+      priority                                 = 10
+      update_resources                         = ["cpu", "memory"]
+      drift_threshold_cpu                      = "5%"
+      drift_threshold_memory                   = "5%"
+      disable_runtime_optimization             = false
+      startup_boost_enabled                    = true
+      startup_boost_recommendation_policy_name = "cost-savings"
+      startup_boost_update_resources           = ["memory"]
       in_place_fallback_reason_policies = {
         JVMHeapDrift = "hold"
       }
@@ -274,7 +305,8 @@ module "cloudpilotai_eks" {
 
   enable_proactive = [
     {
-      namespaces = ["default", "my-namespace"]
+      namespaces            = ["default", "my-namespace"]
+      startup_boost_enabled = true
     }
   ]
 

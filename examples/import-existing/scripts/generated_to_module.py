@@ -13,6 +13,13 @@ RESOURCE_WITH_ID_RE = re.compile(
     re.MULTILINE,
 )
 TOP_LEVEL_ATTR_RE = re.compile(r"^  ([a-zA-Z0-9_]+)\s+=\s+(.*)$")
+REMOVED_CLUSTER_SETTING_FIELDS = (
+    "maintenance_enabled",
+    "saving_report_baseline_start_at",
+    "saving_report_baseline_end_at",
+    "memory_request_multiplier",
+    "zero_memory_request_mib",
+)
 
 def extract_resource_block(text: str, resource_type: str) -> str | None:
     for match in RESOURCE_HEADER_RE.finditer(text):
@@ -70,25 +77,16 @@ def has_top_level_key(body: str, key: str) -> bool:
 def strip_removed_cluster_setting_fields(chunk: str) -> str:
     kept_lines = [
         line for line in chunk.splitlines(keepends=True)
-        if not re.match(r"^\s+maintenance_enabled\s+=", line)
+        if not any(re.match(rf"^\s+{key}\s+=", line) for key in REMOVED_CLUSTER_SETTING_FIELDS)
     ]
 
     non_empty_inner_lines = [
         line for line in kept_lines[1:-1]
         if line.strip()
     ]
-    if kept_lines and kept_lines[0].lstrip().startswith("cluster_setting") and not non_empty_inner_lines:
+    if kept_lines and re.match(r"^\s*cluster_setting\s+=\s*\{", kept_lines[0]) and not non_empty_inner_lines:
         return ""
     return "".join(kept_lines)
-
-
-def normalize_cluster_setting_command_nulls(chunk: str) -> str:
-    return re.sub(
-        r"^(\s+(?:pre_run_command|post_run_command)\s+=\s+)null$",
-        r'\1""',
-        chunk,
-        flags=re.MULTILINE,
-    )
 
 
 def strip_removed_block_device_fields(chunk: str) -> str:
@@ -138,7 +136,6 @@ def transform_cluster_body(body: str) -> list[str]:
             chunk = strip_removed_cluster_setting_fields(chunk)
             if chunk == "":
                 continue
-            chunk = normalize_cluster_setting_command_nulls(chunk)
         chunk = strip_removed_block_device_fields(chunk)
 
         output.append(chunk)
@@ -152,12 +149,8 @@ def transform_cluster_setting_body(body: str | None) -> str | None:
 
     attrs: list[str] = []
     for key, chunk in split_top_level_chunks(body):
-        if key in (None, "cluster_id", "maintenance_enabled"):
+        if key in (None, "cluster_id", *REMOVED_CLUSTER_SETTING_FIELDS):
             continue
-        if key in ("pre_run_command", "post_run_command"):
-            line_match = TOP_LEVEL_ATTR_RE.match(chunk.splitlines()[0])
-            if line_match and line_match.group(2).strip() == "null":
-                chunk = rewrite_top_level_scalar(key, '""')
         attrs.append(indent_block(chunk, "  "))
 
     if not attrs:
@@ -195,7 +188,10 @@ def transform_wa_body(body: str) -> tuple[list[str], bool]:
             continue
         value = line_match.group(2).strip()
 
-        if key in ("cluster_id", "kubeconfig"):
+        if key in (
+            "cluster_id", "kubeconfig", "aws_profile", "aws_assume_role",
+            "gcp_project_id", "gcp_cluster_location",
+        ):
             continue
 
         if key in key_map:

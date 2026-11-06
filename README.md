@@ -2,6 +2,10 @@
 
 Terraform module for deploying [CloudPilot AI](https://cloudpilot.ai/) Node Autoscaler and Workload Autoscaler on Amazon EKS clusters. This module provides a simplified, opinionated interface that wraps the [`cloudpilotai`](https://registry.terraform.io/providers/cloudpilot-ai/cloudpilotai/latest/docs) Terraform provider resources.
 
+## Release preparation
+
+Module v0.6.0 targets provider v0.7.0 and server v1.36.4. These versions are release candidates and have not been published yet. Until publication, use this module checkout as a local `source` with a locally built provider containing [provider PR #44](https://github.com/cloudpilot-ai/terraform-provider-cloudpilotai/pull/44). Registry examples below are intended for use after the releases are published.
+
 ## Registry Support
 
 This module supports both Terraform and OpenTofu.
@@ -240,6 +244,52 @@ module "cloudpilotai_eks" {
 }
 ```
 
+## Server v1.36.4 fields and null values
+
+Provider v0.7.0 is required for these fields; use the local release candidate build until it is published. The module passes nested objects directly to the provider, including the following released configuration:
+
+| Module input | Supported fields |
+|--------------|------------------|
+| `cluster_setting` | `disruption_cooldown`, `aws_spot_allocation_strategy` |
+| `nodeclasses` / `nodeclass_templates` | `memory_extension` |
+| `memory_extension` | `enabled`, `reclaim_policy`, `cold_memory`, `cached_memory` |
+| `memory_extension.cold_memory` | `sizing_mode`, `memory_ratio_percent`, `min_gib`, `max_gib`, `max_disk_percent` |
+| `memory_extension.cached_memory` | `max_memory_percent` |
+| `block_device_mappings[].ebs.volume_size_policy` | `per_vcpu_gib`, `max_size_gib` |
+| `nodepools` / `nodepool_templates` | `disruption_cooldown`, `job_nodepool_optimization`, `nri_swap_policy` |
+| `job_nodepool_optimization` | `min_active_nodes`, `provisioning_delay` |
+| `nri_swap_policy` | `enabled`, `memory_limit_multiplier` |
+| `recommendation_policies` | `jvm_min_heap_xms`, `jvm_max_heap_xms`, `jvm_min_heap_xmx`, `jvm_max_heap_xmx` |
+| `autoscaling_policies` | `startup_boost_recommendation_policy_name`, `startup_boost_update_resources` |
+| `enable_proactive` / `disable_proactive` | `startup_boost_enabled` |
+
+For the optional nested fields above, null values remain unmanaged and preserve the server value. Existing public input defaults listed below still apply; pass null explicitly to leave a supported input unmanaged. For templates, an omitted object key inherits its template value; an explicit null key overrides the template with null. Nested objects replace the template object as a whole. Within a non-empty policy, null child fields preserve their server values.
+
+Explicit empty values request a reset: `job_nodepool_optimization = {}` removes the Job policy, `volume_size_policy = {}` removes dynamic disk sizing, and `memory_extension = {}` or `nri_swap_policy = {}` disables that feature. Empty `cold_memory` or `cached_memory` objects restore server defaults. An object whose optional children are all null is treated as an empty object. A pool's `disruption_cooldown = ""` removes its override; `"0s"` explicitly disables the extra delay. Required fields and values rejected by the server cannot be cleared with an invalid empty value.
+
+```hcl
+nodeclass_templates = [{
+  template_name = "illustrative-memory"
+  ami_alias     = "al2023@latest"
+  memory_extension = {
+    enabled       = true
+    cold_memory   = { sizing_mode = "Auto", min_gib = 1, max_gib = 16 }
+    cached_memory = { max_memory_percent = 10 }
+  }
+}]
+nodeclasses = [{
+  name             = "illustrative-class"
+  template_name    = "illustrative-memory"
+  memory_extension = null # Preserve the remote policy instead of applying the template policy.
+}]
+```
+
+Memory Extension requires AL2023 nodes. NRI swap requires EKS 1.34 or later and an enabled Memory Extension policy on the referenced NodeClass. A new dynamic EBS size policy requires `max_size_gib`; it applies to the kubelet root volume. Cooldowns accept non-negative durations such as `0s` or `5m`; setting `0s` disables the extra delay. See the [complete example](examples/complete/) for configured policies and [provider documentation](https://registry.terraform.io/providers/cloudpilot-ai/cloudpilotai/latest/docs/resources/eks_cluster) for validation rules.
+
+To disable Memory Extension or NRI swap explicitly, set its `enabled` field to `false`. Empty JVM bound strings clear those bounds. For limit policies, selecting one action replaces the previous mode; `remove_limit = false`, `keep_limit = false`, or an empty `multiplier` / `auto_headroom` disables only that action. Null action fields preserve the existing mode unless a different action is selected.
+
+Maintenance mode and Saving Report baseline timestamps are outside this module's supported surface. The import converter omits those fields and preserves null values for the supported settings.
+
 ## Examples
 
 - [Minimal](examples/minimal/) -- Quick-start with agent-only install
@@ -356,7 +406,7 @@ terraform {
   required_providers {
     cloudpilotai = {
       source  = "cloudpilot-ai/cloudpilotai"
-      version = ">= 0.6.0"
+      version = ">= 0.7.0"
     }
   }
 }
@@ -365,6 +415,18 @@ provider "cloudpilotai" {
   api_key = var.cloudpilotai_api_key
 }
 ```
+
+## Local verification
+
+Run the import conversion and template evaluation regressions with:
+
+```bash
+python3 -m unittest discover -s examples/import-existing/scripts -p 'test_*.py' -v
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+terraform fmt -check -recursive
+```
+
+Template tests evaluate the module locals with Terraform and OpenTofu when installed, using temporary directories. For provider validation before v0.7.0 is published, use an isolated CLI configuration with a development override and local provider mirror, then run `init -backend=false` and `validate` against a temporary root pointing at this module. These checks do not apply infrastructure changes.
 
 ## License
 
