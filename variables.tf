@@ -86,9 +86,13 @@ variable "cluster_setting" {
     - enable_disk_monitor
     - enable_node_pool_decommission
     - enable_workload_min_non_spot
+    - disruption_cooldown
+    - aws_spot_allocation_strategy
     - discount
     - pre_run_command
     - post_run_command
+    Omitted or null fields preserve their server values. Maintenance mode and
+    Saving Report baseline timestamps are not managed by this module.
   EOT
   type        = any
   default     = null
@@ -119,9 +123,11 @@ variable "nodeclass_templates" {
     List of NodeClass template objects for reuse across nodeclasses. Each object supports:
     - template_name (Required) - Template identifier
     - role, enable_image_accelerator, enable_local_ssd_ephemeral_storage, instance_tags, system_disk_size_gib,
-      ami_alias, user_data, block_device_mappings,
+      ami_alias, user_data, block_device_mappings, memory_extension,
       extra_cpu_allocation_mcore, extra_memory_allocation_mib,
       subnet_selector_terms, security_group_selector_terms (all Optional)
+    - memory_extension supports enabled, reclaim_policy, cold_memory, and cached_memory.
+    - block_device_mappings.ebs.volume_size_policy supports per_vcpu_gib and max_size_gib.
   EOT
   type        = any
   default     = []
@@ -132,10 +138,12 @@ variable "nodeclasses" {
     List of NodeClass objects defining EC2 instance configurations. Each object supports:
     - name (Required) - NodeClass name (default CloudPilot name is "cloudpilot")
     - template_name, role, enable_image_accelerator, enable_local_ssd_ephemeral_storage, origin_nodeclass_json,
-      instance_tags, system_disk_size_gib, ami_alias, user_data,
+      instance_tags, system_disk_size_gib, ami_alias, user_data, memory_extension,
       block_device_mappings, extra_cpu_allocation_mcore,
       extra_memory_allocation_mib, subnet_selector_terms,
       security_group_selector_terms (all Optional)
+    - memory_extension supports enabled, reclaim_policy, cold_memory, and cached_memory.
+    - block_device_mappings.ebs.volume_size_policy supports per_vcpu_gib and max_size_gib.
   EOT
   type        = any
   default     = []
@@ -152,9 +160,12 @@ variable "nodepool_templates" {
     - enable, nodeclass, enable_gpu, enable_image_accelerator, provision_priority,
       instance_arch, instance_family, capacity_type, zone,
       instance_cpu_min, instance_cpu_max, instance_memory_min, instance_memory_max,
-      node_disruption_limit, node_disruption_budgets, node_disruption_delay, labels, taints (all Optional)
+      node_disruption_limit, node_disruption_budgets, node_disruption_delay, disruption_cooldown, job_nodepool_optimization, nri_swap_policy,
+      labels, taints (all Optional)
     - node_disruption_budgets supports a list of objects with nodes (Required),
       reasons, schedule, and duration (Optional). schedule and duration must be set together.
+    - job_nodepool_optimization supports min_active_nodes and provisioning_delay.
+    - nri_swap_policy supports enabled and memory_limit_multiplier.
     - node_disruption_limit is deprecated; use node_disruption_budgets instead.
   EOT
   type        = any
@@ -169,9 +180,12 @@ variable "nodepools" {
       origin_nodepool_json, provision_priority, instance_arch, instance_family,
       capacity_type, zone, instance_cpu_min, instance_cpu_max,
       instance_memory_min, instance_memory_max, node_disruption_limit, node_disruption_budgets,
-      node_disruption_delay, labels, taints (all Optional)
+      node_disruption_delay, disruption_cooldown, job_nodepool_optimization, nri_swap_policy,
+      labels, taints (all Optional)
     - node_disruption_budgets supports a list of objects with nodes (Required),
       reasons, schedule, and duration (Optional). schedule and duration must be set together.
+    - job_nodepool_optimization supports min_active_nodes and provisioning_delay.
+    - nri_swap_policy supports enabled and memory_limit_multiplier.
     - node_disruption_limit is deprecated; use node_disruption_budgets instead.
   EOT
   type        = any
@@ -281,7 +295,8 @@ variable "recommendation_policies" {
     - evaluation_period (Required) - Evaluation period (e.g. "1m")
     - strategy_type, percentile_cpu, percentile_memory, buffer_cpu, buffer_memory,
       request_min_cpu, request_min_memory, request_max_cpu, request_max_memory,
-      jvm_heap_buffer, jvm_min_heap_xms, jvm_min_heap_xms_ratio_of_memory,
+      jvm_heap_buffer, jvm_min_heap_xms, jvm_max_heap_xms, jvm_min_heap_xmx,
+      jvm_max_heap_xmx, jvm_min_heap_xms_ratio_of_memory,
       jvm_recent_non_heap_window, jvm_heap_used_percentile (all Optional)
   EOT
   type        = any
@@ -309,7 +324,8 @@ variable "autoscaling_policies" {
     - recommendation_policy_name (Required) - Name of the RecommendationPolicy to use
     - enable, priority, target_refs, update_schedules, limit_policies,
       update_resources, drift_threshold_cpu, drift_threshold_memory,
-      on_policy_removal, startup_boost_enabled, startup_boost_min_boost_duration,
+      on_policy_removal, startup_boost_enabled, startup_boost_recommendation_policy_name,
+      startup_boost_update_resources, startup_boost_min_boost_duration,
       startup_boost_min_ready_duration, startup_boost_multiplier_cpu,
       startup_boost_multiplier_memory, disable_runtime_optimization,
       target_refs.label_selector, in_place_fallback_default_policy,
@@ -328,7 +344,7 @@ variable "enable_proactive" {
     List of workload filter objects to enable proactive optimization. Each object supports:
     - namespaces, workload_kinds, workload_name, workload_state,
       autoscaling_policy_names, optimization_states, disable_proactive_update,
-      recommendation_policy_names, runtime_languages, optimized (all Optional)
+      recommendation_policy_names, runtime_languages, optimized, startup_boost_enabled (all Optional)
   EOT
   type        = any
   default     = []
@@ -339,7 +355,7 @@ variable "disable_proactive" {
     List of workload filter objects to disable proactive optimization. Each object supports:
     - namespaces, workload_kinds, workload_name, workload_state,
       autoscaling_policy_names, optimization_states, disable_proactive_update,
-      recommendation_policy_names, runtime_languages, optimized (all Optional)
+      recommendation_policy_names, runtime_languages, optimized, startup_boost_enabled (all Optional)
   EOT
   type        = any
   default     = []

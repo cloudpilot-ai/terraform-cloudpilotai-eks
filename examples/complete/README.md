@@ -12,17 +12,21 @@ The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly 
 ## What This Example Does
 
 - Installs the CloudPilot AI Node Autoscaler with rebalance enabled
-- Manages cluster-level CloudPilot AI settings
+- Manages cluster-level disruption cooldown and AWS Spot allocation strategy
 - Configures a custom NodeClass (`cloudpilot`) with frontend-managed AMI, user data, tags, and block device settings
-- Configures a NodePool (`cloudpilot-general`) with spot and on-demand capacity, labels, and taints
+- Configures a NodePool (`cloudpilot-general`) with spot and on-demand capacity, disruption cooldown, job optimization, and NRI swap
+- Demonstrates Memory Extension and dynamic root EBS sizing on the NodeClass
 - Defines a workload for optimization
 - Deploys the Workload Autoscaler with:
-  - Two recommendation policies (`balanced` and `cost-savings`)
+  - Two recommendation policies (`balanced` and `cost-savings`), including JVM heap bounds
+  - Startup memory boost using an independent recommendation policy
   - Two autoscaling policies (`default-ap` with inplace mode and `readonly` with off mode)
   - Proactive optimization enabled for `default` and `my-namespace` namespaces
   - Proactive optimization disabled for `kube-system` namespace
 
 ## Prerequisites
+
+This example targets module v0.6.0, provider v0.7.0, and server v1.36.4. The module and provider versions are release candidates and are not yet published; use a local module source and the local provider build containing [provider PR #44](https://github.com/cloudpilot-ai/terraform-provider-cloudpilotai/pull/44) before publication. Memory Extension uses AL2023 nodes; the enabled NRI swap example requires EKS 1.34 or later. Remove those optional blocks when they do not match the target cluster. All names and policy values are illustrative.
 
 - [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.0
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) configured with EKS permissions
@@ -50,6 +54,8 @@ The module covers the AWS/EKS fields that the CloudPilot AI frontend explicitly 
    ```
 
 ## Customization
+
+Null optional fields preserve existing remote values; existing public module input defaults still apply. An explicit `null` object field overrides a module template without applying that template field. In a non-empty policy, null children preserve their remote values. An empty Job or disk policy object clears that policy; an empty Memory Extension or NRI object disables the feature. Set `enabled = false` to disable either feature while retaining its other configuration. Maintenance mode and Saving Report baseline timestamps are excluded.
 
 - Modify `recommendation_policies` and `autoscaling_policies` in `main.tf` to tune optimization behavior
 - Adjust `nodeclasses` and `nodepools` for different instance types, architectures, or capacity strategies
